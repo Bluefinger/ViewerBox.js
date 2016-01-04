@@ -1,0 +1,76 @@
+.viewBox {
+    .viewWindow, .viewOverlay, .close, .prev, .next {
+        position:fixed;
+        display:none;
+    }
+    .viewWindow {
+        z-index:9997;
+        max-height:100%;
+        width:100%;
+        top:50%;
+        left:50%;
+        transform:translate3d(-50%, -50%, 0);
+        text-align:center;
+        @include breakpoint(medium) {
+            max-width:80vw;
+        }
+        img, video {
+            max-width:100%;
+            max-height:100%;
+        }
+    }
+    .viewOverlay {
+        background-color:#000;
+        z-index:9996;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
+        opacity:0.8;
+    }
+    .close {
+        z-index:9999;
+        top:0;
+        right:0;
+        width:rem-calc(40);
+        height:rem-calc(40);
+        line-height:rem-calc(40);
+        font-size:rem-calc(22);
+        text-align:center;
+        color:#000;
+        background-color:rgba(255,255,255,0.5);
+        opacity:.6;
+        transition:.3s opacity ease;
+        &:hover {
+            opacity:1;
+        }
+    }
+    .prev, .next {
+        top:50%;
+        font-family:FontAwesome;
+        transform:translate3d(0, -50%, 0);
+        width:rem-calc(50);
+        height:rem-calc(50);
+        text-align:center;
+        line-height:rem-calc(50);
+        background-color:rgba(255,255,255,0.6);
+        color:#000;
+        opacity:0.6;
+        z-index:9998;
+        &:hover {
+            opacity:1;
+        }
+    }
+    .prev {
+        left:rem-calc(0);
+        &:before {
+            content:"\f053";
+        }
+    }
+    .next {
+        right:rem-calc(0);
+        &:before {
+            content:"\f054";
+        }
+    }
+}
