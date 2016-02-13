@@ -30,29 +30,27 @@
                 items: []
             };
 
+            viewer.cache = [];
+
             viewer.init = function () {
                 var active = $(viewer.config.links),
                     box,
-                    overlay,
                     view,
                     prev,
                     next,
-                    anim,
                     close;
 
                 if (active.length > 0) {
                     box = $(viewer.config.box);
-                    overlay = box.find(viewer.config.overlay);
                     view = box.find(viewer.config.view);
                     close = box.find(viewer.config.close);
                     prev = $(buttonTmpl, {'class': 'prev'});
                     next = $(buttonTmpl, {'class': 'next'});
-                    anim = box.find(viewer.config.view + ', ' + viewer.config.close);
 
                     active.on('click.viewer.open', function (e) {
                         e.preventDefault();
                         var link = $(e.currentTarget);
-                        viewer.open(link, view, anim, overlay, box);
+                        viewer.open(link, view, box);
                     });
 
                     prev.on('click.viewer.prev', function(e){
@@ -70,26 +68,25 @@
                     });
 
                     view.on('viewer.open', function(){
-                        overlay.fadeTo(viewer.config.overlayAnim, viewer.config.opacity);
-                        anim.fadeTo(viewer.config.viewAnim, 1);
+                        box.fadeTo(viewer.config.viewAnim, 1);
                     });
 
                     box.append(prev)
                         .append(next);
 
                     view.on('gallery.open', function(){
-                        prev.fadeTo(viewer.config.viewAnim, 1);
-                        next.fadeTo(viewer.config.viewAnim, 1);
+                        prev.show();
+                        next.show();
                     });
                     view.on('gallery.close', function(){
-                        prev.fadeOut(viewer.config.viewAnim);
-                        next.fadeOut(viewer.config.viewAnim);
+                        prev.hide();
+                        next.hide();
                     });
 
                     $('body').append(box);
                     $(win).on('keyup', function(e){
                         e.preventDefault();
-                        viewer.galleryKey(e, view, anim, overlay);
+                        viewer.galleryKey(e, view, box);
                     });
                 }
             };
@@ -114,7 +111,7 @@
                 return result;
             };
 
-            viewer.open = function (link, view, anim, overlay, box) {
+            viewer.open = function (link, view, box) {
                 var type = link.attr('data-viewbox'),
                     data,
                     gallery = link.attr('data-gallery');
@@ -138,7 +135,7 @@
                 }
                 box.one('click.viewer.close', viewer.config.close + ', ' + viewer.config.overlay, function (e) {
                     e.preventDefault();
-                    viewer.close(view, anim, overlay);
+                    viewer.close(view, box);
                 });
                 view.trigger('viewer.open');
             };
@@ -152,45 +149,48 @@
             };
 
             viewer.imageLoad = function (data, view, type, gallery) {
-                var image = imageTmpl.attr('src', data);
+                if (gallery) {
+                    viewer.galleryInit(gallery, data, type, view);
+                }
+                var image = (viewer.cache[viewer.gallery.index])
+                    ? viewer.cache[viewer.gallery.index]
+                    : imageTmpl.attr('src', data);
 
                 view.removeClass('video text iframe')
                     .addClass(type)
                     .append(image);
-                if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
-                }
-                image.one('load', function(){
-                    view.fadeTo('fast', 1)
-                        .trigger('image.load');
-                });
+
+                view.fadeTo('fast', 1)
+                    .trigger('image.load');
             };
 
             viewer.videoLoad = function (data, view, type, gallery) {
-                var video;
-
-                video = ( videoTmpl.attr('src') !== data ) ? videoTmpl.attr('src', data) : videoTmpl;
+                if (gallery) {
+                    viewer.galleryInit(gallery, data, type, view);
+                }
+                var video = (viewer.cache[viewer.gallery.index])
+                    ? viewer.cache[viewer.gallery.index]
+                    : videoTmpl.attr('src', data);
                 view.removeClass('image text iframe')
                     .addClass(type)
                     .append(video)
                     .fadeTo('fast', 1);
                 video[0].play();
                 view.trigger('video.load');
-                if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
-                }
             };
 
             viewer.iframeLoad = function (data, view, type, gallery) {
-                var iframe = iframeTmpl.clone().append(data);
+                if (gallery) {
+                    viewer.galleryInit(gallery, data, type, view);
+                }
+                var iframe = (viewer.cache[viewer.gallery.index])
+                    ? viewer.cache[viewer.gallery.index]
+                    : iframeTmpl.clone().append(data);
 
                 view.removeClass('video text image')
                     .addClass(type)
                     .append(iframe);
 
-                if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
-                }
                 view.fadeTo('fast', 1)
                     .trigger('iframe.load');
             };
@@ -198,7 +198,9 @@
             viewer.galleryInit = function (gallery, image, type, view) {
                 var images = $('[data-gallery="' + gallery + '"]').map(function (ignore, el) {
                         var itemType = el.getAttribute('data-viewbox');
-                        return {data: (itemType === "iframe") ? el.getAttribute('data-iframe') : el.getAttribute('href'), type: itemType};
+                        return {data: (itemType === "iframe")
+                            ? el.getAttribute('data-iframe')
+                            : el.getAttribute('href'), type: itemType};
                     }).get(),
                     currentIndex = viewer.find(images, image);
 
@@ -226,34 +228,44 @@
             };
 
             viewer.galleryPrev = function (view) {
-                var cur;
+                var cur,
+                    prev = viewer.gallery.index;
+
                 viewer.gallery.index -= 1;
+
                 if (viewer.gallery.index === -1) {
                     viewer.gallery.index = viewer.gallery.items.length - 1;
                 }
+
                 cur = viewer.gallery.items[viewer.gallery.index];
+
                 view.fadeTo('fast', 0, function(){
-                    view.empty();
+                    viewer.cache[prev] = view.find('img, video, .flex-video').detach();
                     viewer.galleryOpen(cur.data, view, cur.type);
                 });
                 view.trigger('gallery.prev');
             };
 
             viewer.galleryNext = function (view) {
-                var cur;
+                var cur,
+                    prev = viewer.gallery.index;
+
                 viewer.gallery.index += 1;
+
                 if (viewer.gallery.index === viewer.gallery.items.length) {
                     viewer.gallery.index = 0;
                 }
+
                 cur = viewer.gallery.items[viewer.gallery.index];
+
                 view.fadeTo('fast', 0, function(){
-                    view.empty();
+                    viewer.cache[prev] = view.find('img, video, .flex-video').detach();
                     viewer.galleryOpen(cur.data, view, cur.type);
                 });
                 view.trigger('gallery.next');
             };
 
-            viewer.galleryKey = function (e, view, anim, overlay) {
+            viewer.galleryKey = function (e, view, box) {
                 if (viewer.gallery.view) {
                     switch (viewer.parseKey(e)) {
                         case 'ArrowLeft':
@@ -263,27 +275,31 @@
                             viewer.galleryNext(view);
                             break;
                         case 'Escape':
-                            viewer.close(view, anim, overlay);
+                            viewer.close(view, box);
                             break;
                     }
                 }
             };
 
-            viewer.close = function (view, anim, overlay) {
+            viewer.close = function (view, box) {
                 var vid;
-                viewer.gallery.view = '';
-                anim.fadeOut(viewer.config.viewAnim, function () {
+                box.fadeOut(viewer.config.viewAnim, function () {
                     if (view.hasClass('video')) {
                         vid = view.find('video');
                         if (vid.length > 0) {
-                            videoTmpl = vid.detach();
-                            videoTmpl[0].pause();
+                            vid[0].pause();
+                        } else {
+                            view.empty();
                         }
                     }
-                    view.empty();
+                    if (viewer.gallery.view) {
+                        viewer.cache[viewer.gallery.index] = view.find('img, video, .flex-box').detach();
+                    } else {
+                        view.empty();
+                    }
+                    viewer.gallery.view = '';
                     view.trigger('gallery.close');
                 });
-                overlay.fadeOut(viewer.config.overlayAnim);
             };
 
             return viewer;
