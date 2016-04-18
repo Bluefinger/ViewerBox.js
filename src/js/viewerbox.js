@@ -32,6 +32,22 @@
 
             viewer.cache = [];
 
+            viewer.transitionCheck = function() {
+                var t,
+                    el = document.createElement('stylecheck'),
+                    transitions = {
+                        'transition':'transitionend',
+                        'OTransition':'oTransitionEnd',
+                        'MozTransition':'transitionend',
+                        'WebkitTransition':'webkitTransitionEnd'
+                    };
+
+                for(t in transitions){
+                    if( el.style[t] !== undefined ){
+                        return transitions[t];
+                    }
+                }
+            };
             viewer.init = function () {
                 var active = $(viewer.config.links),
                     box,
@@ -68,7 +84,7 @@
                     });
 
                     view.on('viewer.open', function(){
-                        box.fadeTo(viewer.config.viewAnim, 1);
+                        box.addClass('viewOpen viewPosition');
                     });
 
                     box.append(prev)
@@ -135,6 +151,7 @@
                 }
                 box.one('click.viewer.close', viewer.config.close + ', ' + viewer.config.overlay, function (e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     viewer.close(view, box);
                 });
                 view.trigger('viewer.open');
@@ -282,8 +299,12 @@
             };
 
             viewer.close = function (view, box) {
-                var vid;
-                box.fadeOut(viewer.config.viewAnim, function () {
+                var vid, transition = viewer.transitionCheck();
+
+                box.removeClass('viewOpen');
+
+                box.one(transition, function(e){
+                    e.stopPropagation();
                     if (view.hasClass('video')) {
                         vid = view.find('video');
                         if (vid.length > 0) {
@@ -299,6 +320,7 @@
                     }
                     viewer.gallery.view = '';
                     view.trigger('gallery.close');
+                    box.removeClass("viewPosition");
                 });
             };
 
