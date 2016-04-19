@@ -32,6 +32,8 @@
 
             viewer.cache = [];
 
+            viewer.transitionMode = '';
+
             viewer.transitionCheck = function() {
                 var t,
                     el = document.createElement('stylecheck'),
@@ -62,6 +64,7 @@
                     close = box.find(viewer.config.close);
                     prev = $(buttonTmpl, {'class': 'prev'});
                     next = $(buttonTmpl, {'class': 'next'});
+                    viewer.transitionMode = viewer.transitionCheck();
 
                     active.on('click.viewer.open', function (e) {
                         e.preventDefault();
@@ -163,11 +166,13 @@
                 view.removeClass('video image iframe')
                     .addClass(type)
                     .append(text);
+
+                view.trigger('text.load');
             };
 
             viewer.imageLoad = function (data, view, type, gallery) {
                 if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
+                    viewer.galleryInit(gallery, data, view, type);
                 }
                 var image = (viewer.cache[viewer.gallery.index])
                     ? viewer.cache[viewer.gallery.index]
@@ -177,13 +182,12 @@
                     .addClass(type)
                     .append(image);
 
-                view.fadeTo('fast', 1)
-                    .trigger('image.load');
+                view.trigger('image.load');
             };
 
             viewer.videoLoad = function (data, view, type, gallery) {
                 if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
+                    viewer.galleryInit(gallery, data, view, type);
                 }
                 var video = (viewer.cache[viewer.gallery.index])
                     ? viewer.cache[viewer.gallery.index]
@@ -198,7 +202,7 @@
 
             viewer.iframeLoad = function (data, view, type, gallery) {
                 if (gallery) {
-                    viewer.galleryInit(gallery, data, type, view);
+                    viewer.galleryInit(gallery, data, view, type);
                 }
                 var iframe = (viewer.cache[viewer.gallery.index])
                     ? viewer.cache[viewer.gallery.index]
@@ -208,22 +212,21 @@
                     .addClass(type)
                     .append(iframe);
 
-                view.fadeTo('fast', 1)
-                    .trigger('iframe.load');
+                view.trigger('iframe.load');
             };
 
-            viewer.galleryInit = function (gallery, image, type, view) {
-                var images = $('[data-gallery="' + gallery + '"]').map(function (ignore, el) {
+            viewer.galleryInit = function (gallery, data, view, type) {
+                var items = $('[data-gallery="' + gallery + '"]').map(function (ignore, el) {
                         var itemType = el.getAttribute('data-viewbox');
                         return {data: (itemType === "iframe")
                             ? el.getAttribute('data-iframe')
                             : el.getAttribute('href'), type: itemType};
                     }).get(),
-                    currentIndex = viewer.find(images, image);
+                    currentIndex = viewer.find(items, data);
 
                 if (currentIndex !== -1) {
                     viewer.gallery.view = gallery;
-                    viewer.gallery.items = images;
+                    viewer.gallery.items = items;
                     viewer.gallery.index = currentIndex;
 
                     view.trigger('gallery.open');
@@ -255,10 +258,11 @@
                 }
 
                 cur = viewer.gallery.items[viewer.gallery.index];
-
-                view.fadeTo('fast', 0, function(){
+                view.addClass('gallery-fade');
+                view.one(viewer.transitionMode, function(){
                     viewer.cache[prev] = view.find('img, video, .flex-video').detach();
                     viewer.galleryOpen(cur.data, view, cur.type);
+                    view.removeClass('gallery-fade');
                 });
                 view.trigger('gallery.prev');
             };
@@ -274,10 +278,11 @@
                 }
 
                 cur = viewer.gallery.items[viewer.gallery.index];
-
-                view.fadeTo('fast', 0, function(){
+                view.addClass('gallery-fade');
+                view.one(viewer.transitionMode, function(){
                     viewer.cache[prev] = view.find('img, video, .flex-video').detach();
                     viewer.galleryOpen(cur.data, view, cur.type);
+                    view.removeClass('gallery-fade');
                 });
                 view.trigger('gallery.next');
             };
@@ -299,11 +304,11 @@
             };
 
             viewer.close = function (view, box) {
-                var vid, transition = viewer.transitionCheck();
+                var vid;
 
                 box.removeClass('viewOpen');
 
-                box.one(transition, function(e){
+                box.one(viewer.transitionMode, function(e){
                     e.stopPropagation();
                     if (view.hasClass('video')) {
                         vid = view.find('video');
@@ -314,7 +319,7 @@
                         }
                     }
                     if (viewer.gallery.view) {
-                        viewer.cache[viewer.gallery.index] = view.find('img, video, .flex-box').detach();
+                        viewer.cache[viewer.gallery.index] = view.find('img, video, .flex-video').detach();
                     } else {
                         view.empty();
                     }
