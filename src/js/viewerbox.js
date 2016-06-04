@@ -176,7 +176,7 @@
                 }
                 var image = (viewer.cache[viewer.gallery.index])
                     ? viewer.cache[viewer.gallery.index]
-                    : imageTmpl.attr('src', data);
+                    : imageTmpl.clone().attr('src', data);
 
                 view.removeClass('video text iframe')
                     .addClass(type)
@@ -191,11 +191,10 @@
                 }
                 var video = (viewer.cache[viewer.gallery.index])
                     ? viewer.cache[viewer.gallery.index]
-                    : videoTmpl.attr('src', data);
+                    : videoTmpl.clone().attr('src', data);
                 view.removeClass('image text iframe')
                     .addClass(type)
-                    .append(video)
-                    .fadeTo('fast', 1);
+                    .append(video);
                 video[0].play();
                 view.trigger('video.load');
             };
